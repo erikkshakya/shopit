@@ -1,0 +1,14 @@
+{
+  "name": "shopit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "NODE_ENV=DEVELOPMENT nodemon backend/server.js",
+    "prod": "NODE_ENV=PRODUCTION nodemon backend/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
