@@ -3,11 +3,18 @@ const ErrorHandler = require("../utils/errorHandler");
 const catchAsyncErrors = require("../middlewares/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
 const sendEmail = require("../utils/sendEmail");
+var cloudinary = require("cloudinary");
 const crypto = require("crypto");
 
 //Register a user
 
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
+  const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
+    folder: "avatars",
+    width: 150,
+    crop: "scale",
+  });
+
   const { name, email, password } = req.body;
 
   const user = await User.create({
@@ -15,12 +22,13 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
     email,
     password,
     avatar: {
-      public_id: "avatars/wqweqewq",
-      url: "https://images.unsplash.com/profile-1446404465118-3a53b909cc82?ixlib=rb-0.3.5&q=80&fm=jpg&crop=faces&cs=tinysrgb&fit=crop&h=128&w=128&s=27a346c2362207494baa7b76f5d606e5",
+      public_id: result.public_id,
+      url: result.secure_url,
     },
   });
 
   sendToken(user, 200, res);
+
   //   const token = user.getJwtToken();
 
   //   res.status(201).json({
@@ -65,9 +73,11 @@ exports.forgotPassword = catchAsyncErrors(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
 
   // Create reset password url
-  const resetUrl = `${req.protocol}://${req.get(
-    "host"
-  )}/api/v1/password/reset/${resetToken}`;
+  // const resetUrl = `${req.protocol}://${req.get(
+  //   "host"
+  // )}/api/v1/password/reset/${resetToken}`;
+
+  const resetUrl = `${process.env.FRONTEND_URL}/password/reset/${resetToken}`;
 
   const message = `Your password reset token is as follows:\n\n${resetUrl}\n\n.Ignore if not needed.`;
 
@@ -145,7 +155,7 @@ exports.updatePassword = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Password not found"));
   }
 
-  user.password = req.body.password;
+  user.password = req.body.newPassword;
 
   await user.save();
 
@@ -158,6 +168,25 @@ exports.updateProfile = catchAsyncErrors(async (req, res, next) => {
     name: req.body.name,
     email: req.body.email,
   };
+
+  // Update avatar
+  if (req.body.avatar !== null) {
+    const user = await User.findById(req.user.id);
+
+    const image_id = user.avatar.public_id;
+    const res = await cloudinary.v2.uploader.destroy(image_id);
+
+    const result = await cloudinary.v2.uploader.upload(req.body.avatar, {
+      folder: "avatars",
+      width: 150,
+      crop: "scale",
+    });
+
+    newUserData.avatar = {
+      public_id: result.public_id,
+      url: result.secure_url,
+    };
+  }
 
   const user = await User.findByIdAndUpdate(req.user.id, newUserData, {
     new: true,
